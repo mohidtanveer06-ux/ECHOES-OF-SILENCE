@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#070b11">
+  <title>Echoes of Silence</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      font-family: "Courier New", Courier, monospace;
+      background: #070b11;
+      color: #d6e5e8;
+      font-synthesis: none;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      min-height: 100vh;
+      margin: 0;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      background:
+        radial-gradient(ellipse at 50% 46%, rgba(17, 37, 43, .36), transparent 56%),
+        #070b11;
+    }
+
+    .game-shell { width: min(100%, 920px); }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 20px;
+      margin: 0 0 14px;
+    }
+
+    .eyebrow, .readout-label, .hint {
+      color: #71858e;
+      font-size: 11px;
+      letter-spacing: .16em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 5px 0 0;
+      color: #e0f0ed;
+      font-size: clamp(20px, 4vw, 30px);
+      font-weight: 500;
+      letter-spacing: .13em;
+    }
+
+    .readout { min-width: 110px; text-align: right; }
+
+    .readout-value {
+      display: block;
+      margin-top: 5px;
+      color: #7de8c2;
+      font-size: 12px;
+      letter-spacing: .12em;
+    }
+
+    .frame {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid #21333a;
+      background: #090f16;
+      box-shadow: 0 0 0 5px rgba(18, 32, 39, .24), 0 20px 80px #0009;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      aspect-ratio: 7 / 5;
+      background: #090f16;
+    }
+
+    .overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      background: rgba(4, 8, 13, .76);
+      backdrop-filter: blur(3px);
+      text-align: center;
+    }
+
+    .overlay[hidden], [hidden] { display: none !important; }
+
+    .card { width: min(100%, 440px); }
+
+    .intro-card { animation: title-arrive 1.15s cubic-bezier(.18,.8,.22,1) both; }
+
+    .brand-mark {
+      margin: 0 0 10px;
+      color: #8df4ca;
+      font-size: clamp(48px, 12vw, 76px);
+      font-weight: 700;
+      letter-spacing: .22em;
+      text-shadow: 0 0 28px #60e8bb88;
+      animation: mark-glow 2.2s ease-in-out infinite alternate;
+    }
+
+    .game-name {
+      margin: 0 0 22px;
+      color: #e6f2ed;
+      font-size: clamp(17px, 4vw, 27px);
+      letter-spacing: .13em;
+      animation: subtitle-arrive 1s .3s both;
+    }
+
+    @keyframes title-arrive {
+      from { opacity: 0; transform: translateY(18px) scale(.94); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes subtitle-arrive {
+      from { opacity: 0; letter-spacing: .3em; }
+      to { opacity: 1; letter-spacing: .13em; }
+    }
+
+    @keyframes mark-glow {
+      from { text-shadow: 0 0 15px #60e8bb55; }
+      to { text-shadow: 0 0 36px #60e8bbcc; }
+    }
+
+    .lobby-panel { width: min(100%, 410px); }
+    .lobby-panel h2 { margin-bottom: 8px; }
+    .lobby-panel p { margin-bottom: 16px; }
+
+    .lobby-actions { display: grid; gap: 10px; }
+
+    .lobby-actions button { width: 100%; }
+
+    .room-input, .name-input {
+      width: 100%;
+      min-height: 46px;
+      padding: 10px 12px;
+      border: 1px solid #344d52;
+      border-radius: 0;
+      background: #0b151b;
+      color: #e0f0ed;
+      font: inherit;
+      letter-spacing: .1em;
+      text-align: center;
+    }
+
+    .room-input:focus, .name-input:focus { outline: 1px solid #55c5a6; }
+
+    .room-code {
+      display: inline-block;
+      padding: 8px 14px;
+      border: 1px dashed #55c5a6;
+      color: #9ff2d3;
+      font-size: 22px;
+      letter-spacing: .28em;
+    }
+
+    .room-note, .room-status {
+      display: block;
+      margin-top: 12px;
+      color: #e6c27a;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .player-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(115px, 1fr));
+      gap: 7px;
+      margin: 12px 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .player-list li {
+      overflow: hidden;
+      padding: 8px;
+      border: 1px solid #263c41;
+      color: #b9cdcc;
+      font-size: 11px;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .player-list li.host-player { border-color: #55c5a6; color: #9ff2d3; }
+
+    .mobile-controls {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px;
+      border: 1px solid #21333a;
+      border-top: 0;
+      background: #0a1118;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .dpad {
+      display: grid;
+      grid-template: repeat(2, 50px) / repeat(3, 50px);
+      gap: 4px;
+    }
+
+    .mobile-controls button {
+      min-width: 0;
+      min-height: 46px;
+      padding: 8px;
+      border: 1px solid #3b5a60;
+      background: #102027;
+      color: #b6ded4;
+      font-size: 17px;
+      touch-action: none;
+    }
+
+    .mobile-controls button:active, .mobile-controls button.pressed {
+      background: #225247;
+      box-shadow: 0 0 18px #55c5a655;
+    }
+
+    .mobile-controls .empty { visibility: hidden; }
+    .mobile-controls .run-button { width: 94px; height: 60px; font-size: 11px; }
+
+    .signal-mark {
+      width: 68px;
+      height: 68px;
+      margin: 0 auto 20px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #3a8079;
+      border-radius: 50%;
+      color: #83f0c7;
+      font-size: 26px;
+      box-shadow: 0 0 32px #4ce2b327, inset 0 0 24px #4ce2b315;
+    }
+
+    .overlay h2 {
+      margin: 0 0 12px;
+      color: #e6f2ed;
+      font-size: clamp(20px, 4vw, 27px);
+      font-weight: 500;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+    }
+
+    .overlay p {
+      margin: 0 auto 22px;
+      color: #9aadb0;
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .overlay .warning { color: #ef9978; }
+
+    button {
+      min-width: 170px;
+      padding: 12px 18px;
+      border: 1px solid #55c5a6;
+      background: #10221f;
+      color: #9ff2d3;
+      font: inherit;
+      font-size: 12px;
+      letter-spacing: .15em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background .16s ease, box-shadow .16s ease;
+    }
+
+    button:hover, button:focus-visible {
+      outline: none;
+      background: #17352d;
+      box-shadow: 0 0 22px #55c5a633;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 18px;
+      margin-top: 14px;
+      color: #71858e;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .key {
+      color: #b1c4c5;
+      white-space: nowrap;
+    }
+
+    @media (max-width: 600px) {
+      body { min-height: 100svh; min-height: 100dvh; padding: 10px; align-items: start; }
+      .game-shell { width: min(100%, 520px); margin: auto 0; }
+      header { align-items: center; }
+      .eyebrow, .readout-label { font-size: 9px; }
+      h1 { font-size: clamp(17px, 5vw, 23px); }
+      canvas { aspect-ratio: 1 / .84; }
+      .overlay { padding: 14px; }
+      .signal-mark { width: 48px; height: 48px; margin-bottom: 10px; font-size: 20px; }
+      .overlay p { margin-bottom: 13px; font-size: 11px; line-height: 1.55; }
+      .room-note { font-size: 10px; }
+      footer { display: block; }
+      footer span { display: block; margin: 3px 0; }
+    }
+
+    @media (max-height: 760px) {
+      body { align-content: start; }
+    }
+
+    @media (pointer: coarse), (max-width: 700px) {
+      .mobile-controls { display: flex; }
+      .mobile-controls button { min-width: 50px; min-height: 52px; }
+      .mobile-controls .run-button { min-width: 100px; min-height: 64px; }
+    }
+
+    @media (orientation: landscape) and (max-height: 560px) and (pointer: coarse) {
+      body { display: block; min-height: 100dvh; padding: 5px 12px; }
+      .game-shell { width: min(100%, 980px); margin: 0 auto; }
+      header { margin-bottom: 4px; }
+      h1 { font-size: 18px; }
+      .eyebrow, .readout-label { font-size: 8px; }
+      canvas { aspect-ratio: 2.15 / 1; }
+      .mobile-controls { justify-content: space-between; padding: 4px; }
+      .dpad { grid-template: repeat(2, 40px) / repeat(3, 42px); }
+      .mobile-controls button { min-height: 40px; min-width: 42px; }
+      .mobile-controls .run-button { min-width: 82px; min-height: 48px; }
+      footer { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="game-shell">
+    <header>
+      <div>
+        <div class="eyebrow">A quiet place to disappear</div>
+        <h1>ECHOES OF SILENCE</h1>
+      </div>
+      <div class="readout" aria-live="polite">
+        <span class="readout-label">Signal level</span>
+        <span class="readout-value" id="signal-label">QUIET</span>
+        <span class="readout-label" id="room-label">NO ROOM</span>
+      </div>
+    </header>
+
+    <section class="frame" aria-label="Echoes of Silence game">
+      <canvas id="game" aria-label="Top-down maze game. Use arrow keys or WASD to reach the green exit."></canvas>
+      <div class="overlay" id="overlay" hidden>
+        <div class="card">
+          <div class="signal-mark" aria-hidden="true">∿</div>
+          <h2 id="overlay-title">Listen to the dark</h2>
+          <p id="overlay-copy">Silence is survival. Move carefully. Avoid panic-tapping.<br>Reach the green signal. The blind are listening.</p>
+          <button id="action-button" type="button">Enter the silence</button>
+        </div>
+      </div>
+      <div class="overlay" id="menu-overlay">
+        <div class="card intro-card" id="intro-panel">
+          <div class="brand-mark">MT</div>
+          <div class="game-name">ECHOES OF SILENCE</div>
+          <p>Silence is survival.<br>Can you escape what you cannot see?</p>
+          <button id="continue-button" type="button">Enter the dark</button>
+        </div>
+        <div class="lobby-panel" id="lobby-panel" hidden>
+          <h2>Choose your silence</h2>
+          <p>Create a room or join one with a code.<br>Play together. Make less noise.</p>
+          <label class="eyebrow" for="player-name">PLAYER NAME</label>
+          <input class="name-input" id="player-name" maxlength="16" placeholder="YOUR NAME" autocomplete="nickname" required>
+          <div class="lobby-actions">
+            <button id="create-room" type="button">Create room</button>
+            <input class="room-input" id="join-code" maxlength="5" placeholder="ROOM CODE" aria-label="Room code">
+            <button id="join-room" type="button">Join room</button>
+          </div>
+          <span class="room-status" id="lobby-status" aria-live="polite"></span>
+        </div>
+        <div class="lobby-panel" id="room-panel" hidden>
+          <div class="eyebrow">YOUR ROOM CODE</div>
+          <div class="room-code" id="room-code">-----</div>
+          <p>Up to 5 players · 5 harder levels · only 2 shared lives.<br>Darkness closes in and hunters get faster each level.</p>
+          <ul class="player-list" id="player-list" aria-live="polite"></ul>
+          <div class="lobby-actions">
+            <button id="copy-code" type="button">Copy room code</button>
+            <button id="start-room" type="button">Start game</button>
+            <button id="leave-room" type="button">Leave room</button>
+          </div>
+          <span class="room-note">Online room · up to 5 players</span>
+        </div>
+      </div>
+    </section>
+
+    <div class="mobile-controls" id="mobile-controls" aria-label="Touch game controls">
+      <div class="dpad">
+        <button class="empty" tabindex="-1" aria-hidden="true"></button>
+        <button data-key="ArrowUp" aria-label="Move up">▲</button>
+        <button class="empty" tabindex="-1" aria-hidden="true"></button>
+        <button data-key="ArrowLeft" aria-label="Move left">◀</button>
+        <button data-key="ArrowDown" aria-label="Move down">▼</button>
+        <button data-key="ArrowRight" aria-label="Move right">▶</button>
+      </div>
+      <button class="run-button" id="run-button" aria-label="Hold to run">HOLD<br>TO RUN</button>
+    </div>
+
+    <footer>
+      <span class="key">MOVE &nbsp; WASD / ARROWS / TOUCH</span>
+      <span class="key">RUN &nbsp; HOLD SHIFT / SPACE / RUN BUTTON</span>
+      <span>Small sounds fade. Loud ones travel.</span>
+    </footer>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+      const overlay = document.getElementById("overlay");
+      const menuOverlay = document.getElementById("menu-overlay");
+      const introPanel = document.getElementById("intro-panel");
+      const lobbyPanel = document.getElementById("lobby-panel");
+      const roomPanel = document.getElementById("room-panel");
+      const overlayTitle = document.getElementById("overlay-title");
+      const overlayCopy = document.getElementById("overlay-copy");
+      const actionButton = document.getElementById("action-button");
+      const signalLabel = document.getElementById("signal-label");
+      const roomLabel = document.getElementById("room-label");
+      const roomCodeLabel = document.getElementById("room-code");
+      const lobbyStatus = document.getElementById("lobby-status");
+      const playerNameInput = document.getElementById("player-name");
+      const joinCodeInput = document.getElementById("join-code");
+      const startRoomButton = document.getElementById("start-room");
+      const playerList = document.getElementById("player-list");
+      const COLS = 21, ROWS = 15, TILE = 28;
+      const WORLD_WIDTH = COLS * TILE, WORLD_HEIGHT = ROWS * TILE;
+      const MAX_LEVEL = 5;
+      const STARTING_LIVES = 2;
+      const START = { x: 1, y: 1 }, EXIT = { x: COLS - 2, y: ROWS - 2 };
+      const MOVE_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
+      const PANIC_KEYS = new Set(["Shift", " "]);
+      const COLORS = ["#9effd2", "#8acbff", "#f2d47b", "#d59cff", "#ff9f83"];
+      const SERVER_PROTOCOL = location.protocol === "https:" ? "wss:" : "ws:";
+      const SERVER_URL = window.GAME_SERVER_URL || `${SERVER_PROTOCOL}//${location.host}/ws`;
+      let maze = [];
+      let players = [];
+      let enemies = [];
+      let ripples = [];
+      let gameState = "menu";
+      let level = 1;
+      let lives = STARTING_LIVES;
+      let lastFrame = 0;
+      let sendTimer = 0;
+      let localPlayerId = "";
+      let localName = "Player";
+      let roomCode = "";
+      let isHost = false;
+      let socket = null;
+      let socketPromise = null;
+      let hostId = "";
+      let noisePressure = 0;
+      let rapidKeys = [];
+      let rapidSoundTimer = 0;
+      const heldKeys = new Set();
+
+      function makeMaze() {
+        maze = Array.from({ length: ROWS }, () => Array(COLS).fill("#"));
+        const stack = [START];
+        maze[START.y][START.x] = ".";
+        while (stack.length) {
+          const current = stack[stack.length - 1];
+          const choices = [
+            { x: current.x, y: current.y - 2 }, { x: current.x + 2, y: current.y },
+            { x: current.x, y: current.y + 2 }, { x: current.x - 2, y: current.y }
+          ].filter((next) => next.x > 0 && next.x < COLS - 1 &&
+            next.y > 0 && next.y < ROWS - 1 && maze[next.y][next.x] === "#");
+          if (!choices.length) { stack.pop(); continue; }
+          const next = choices[Math.floor(Math.random() * choices.length)];
+          maze[(current.y + next.y) / 2][(current.x + next.x) / 2] = ".";
+          maze[next.y][next.x] = ".";
+          stack.push(next);
+        }
+      }
+
+      function cellCenter(cell) { return { x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2 }; }
+      function cellAt(x, y) { return { x: Math.floor(x / TILE), y: Math.floor(y / TILE) }; }
+      function isOpen(x, y) { return y >= 0 && y < ROWS && x >= 0 && x < COLS && maze[y][x] === "."; }
+
+      function walkableAt(x, y, radius) {
+        return [[x - radius, y - radius], [x + radius, y - radius], [x - radius, y + radius], [x + radius, y + radius]]
+          .every(([px, py]) => isOpen(Math.floor(px / TILE), Math.floor(py / TILE)));
+      }
+
+      function findPath(start, target) {
+        if (!isOpen(target.x, target.y)) return [];
+        const queue = [start];
+        const cameFrom = new Map([[`${start.x},${start.y}`, null]]);
+        const directions = [[0, -1], [1, 0], [0, 1], [-1, 0]];
+        for (let index = 0; index < queue.length; index += 1) {
+          const current = queue[index];
+          if (current.x === target.x && current.y === target.y) break;
+          for (const [dx, dy] of directions) {
+            const next = { x: current.x + dx, y: current.y + dy };
+            const key = `${next.x},${next.y}`;
+            if (isOpen(next.x, next.y) && !cameFrom.has(key)) {
+              cameFrom.set(key, current);
+              queue.push(next);
+            }
+          }
+        }
+        const key = `${target.x},${target.y}`;
+        if (!cameFrom.has(key)) return [];
+        const path = [];
+        let step = target;
+        while (step) { path.push(step); step = cameFrom.get(`${step.x},${step.y}`); }
+        return path.reverse();
+      }
+
+      function playerAt(cell, id, name) {
+        return { id, name, ...cellCenter(cell), radius: 7, keys: {}, panic: false, escaped: false, safe: 1.4, normalTimer: 0, panicTimer: 0, lastSeen: Date.now() };
+      }
+
+      function spawnCell(index, excludeId = "") {
+        const used = new Set(players
+          .filter((player) => player.id !== excludeId)
+          .map((player) => {
+            const cell = cellAt(player.x, player.y);
+            return `${cell.x},${cell.y}`;
+          }));
+        const candidates = [];
+        for (let y = 1; y < ROWS - 1; y += 1) {
+          for (let x = 1; x < COLS - 1; x += 1) {
+            if (isOpen(x, y) && !used.has(`${x},${y}`)) {
+              candidates.push({ x, y, distance: Math.abs(x - START.x) + Math.abs(y - START.y) });
+            }
+          }
+        }
+        candidates.sort((first, second) => first.distance - second.distance);
+        const spawn = candidates[Math.min(index, candidates.length - 1)];
+        return spawn ? { x: spawn.x, y: spawn.y } : START;
+      }
+
+      function createEnemies() {
+        const candidates = [];
+        for (let y = 1; y < ROWS - 1; y += 1) for (let x = 1; x < COLS - 1; x += 1) {
+          const fromStart = Math.abs(x - START.x) + Math.abs(y - START.y);
+          if (isOpen(x, y) && fromStart > 7 && Math.abs(x - EXIT.x) + Math.abs(y - EXIT.y) > 2) candidates.push({ x, y });
+        }
+        enemies = [];
+        const hunterCount = 2 + level + Math.floor((players.length - 1) / 2);
+        for (let index = 0; index < Math.min(hunterCount, candidates.length); index += 1) {
+          const cell = candidates.splice(Math.floor(Math.random() * candidates.length), 1)[0];
+          enemies.push({ ...cellCenter(cell), cell, id: index, alerted: 0, target: null, path: [], pathTimer: Math.random() * .3, roamTimer: 0 });
+        }
+      }
+
+      function postRoom(message) {
+        if (!socket || socket.readyState !== WebSocket.OPEN) {
+          lobbyStatus.textContent = "Server connection lost. Return to the lobby and reconnect.";
+          return;
+        }
+        socket.send(JSON.stringify(message));
+      }
+
+      function roomSnapshot() {
+        return {
+          type: "snapshot", hostId: localPlayerId, gameState, maze, level, lives,
+          players: players.map(({ id, name, x, y, radius, escaped, safe, keys, panic }) =>
+            ({ id, name, x, y, radius, escaped, safe, keys, panic })),
+          enemies: enemies.map(({ x, y, id, alerted }) => ({ x, y, id, alerted })),
+          ripples: ripples.map(({ x, y, radius, previousRadius, maxRadius, strength, color }) =>
+            ({ x, y, radius, previousRadius, maxRadius, strength, color }))
+        };
+      }
+
+      function publishSnapshot() {
+        if (!isHost || !roomCode) return;
+        postRoom({ type: "snapshot", snapshot: roomSnapshot() });
+      }
+
+      function connectServer() {
+        if (socket && socket.readyState === WebSocket.OPEN) return Promise.resolve(socket);
+        if (socketPromise) return socketPromise;
+        if (location.protocol === "file:") {
+          return Promise.reject(new Error("Online rooms need the game hosted on a server. Run `npm start` and open its URL."));
+        }
+        socketPromise = new Promise((resolve, reject) => {
+          const connection = new WebSocket(SERVER_URL);
+          socket = connection;
+          const timeout = window.setTimeout(() => {
+            connection.close();
+            reject(new Error("Could not reach the game server. Please try again."));
+          }, 7000);
+          connection.addEventListener("open", () => {
+            window.clearTimeout(timeout);
+            resolve(connection);
+          }, { once: true });
+          connection.addEventListener("error", () => {
+            window.clearTimeout(timeout);
+            reject(new Error("Could not reach the game server. Please try again."));
+          }, { once: true });
+          connection.addEventListener("message", (event) => {
+            try {
+              handleServerMessage(JSON.parse(event.data));
+            } catch (error) {
+              lobbyStatus.textContent = "The game server sent an invalid response. Please reconnect.";
+            }
+          });
+          connection.addEventListener("close", () => {
+            window.clearTimeout(timeout);
+            if (socket === connection) socket = null;
+            if (roomCode) {
+              clearRoomState();
+              menuOverlay.hidden = false;
+              introPanel.hidden = true;
+              lobbyPanel.hidden = false;
+              roomPanel.hidden = true;
+              overlay.hidden = true;
+              lobbyStatus.textContent = "Disconnected from the room server. Rejoin to keep playing.";
+            }
+          });
+        }).finally(() => { socketPromise = null; });
+        return socketPromise;
+      }
+
+      function showRoomPanel(host) {
+        menuOverlay.hidden = false;
+        introPanel.hidden = true;
+        lobbyPanel.hidden = true;
+        roomPanel.hidden = false;
+        roomCodeLabel.textContent = roomCode;
+        startRoomButton.hidden = !host;
+        startRoomButton.textContent = gameState === "playing" ? "Restart level" : "Start game";
+        renderPlayerList();
+      }
+
+      function renderPlayerList() {
+        playerList.replaceChildren();
+        for (const player of players) {
+          const item = document.createElement("li");
+          item.textContent = `${player.name}${player.id === localPlayerId ? " (you)" : ""}${player.id === hostId ? " · HOST" : ""}`;
+          if (player.id === hostId) item.classList.add("host-player");
+          playerList.append(item);
+        }
+        roomLabel.textContent = roomCode ? `ROOM ${roomCode} · ${players.length}/5` : "NO ROOM";
+      }
+
+      function handleSnapshot(snapshot) {
+        if (!snapshot || typeof snapshot !== "object") return;
+        maze = snapshot.maze;
+        players = snapshot.players;
+        enemies = snapshot.enemies;
+        ripples = (snapshot.ripples || []).map((ripple) => ({ ...ripple, speed: 0, heardBy: new Set() }));
+        level = snapshot.level;
+        lives = snapshot.lives;
+        renderPlayerList();
+        if (snapshot.gameState === "playing") {
+          gameState = "playing";
+          menuOverlay.hidden = true;
+          overlay.hidden = true;
+        } else if (snapshot.gameState === "lobby") {
+          gameState = "lobby";
+          showRoomPanel(isHost);
+          lobbyStatus.textContent = "Room ready. Waiting for the host to start.";
+        } else if (snapshot.gameState === "won" || snapshot.gameState === "lost") {
+          finishGame(snapshot.gameState, false);
+        }
+      }
+
+      function handleServerMessage(message) {
+        if (!message || typeof message !== "object") return;
+        if (message.type === "error") {
+          const text = message.message || "The room server returned an error.";
+          lobbyStatus.textContent = text;
+          if (message.code === "ROOM_FULL" || message.code === "ROOM_NOT_FOUND") {
+            gameState = "menu";
+            roomCode = "";
+            localPlayerId = "";
+            hostId = "";
+            isHost = false;
+            players = [];
+            menuOverlay.hidden = false;
+            introPanel.hidden = true;
+            lobbyPanel.hidden = false;
+            roomPanel.hidden = true;
+            renderPlayerList();
+          }
+          return;
+        }
+        if (message.type === "created") {
+          localPlayerId = message.playerId;
+          hostId = message.hostId;
+          roomCode = message.roomCode;
+          isHost = true;
+          makeMaze();
+          players = [playerAt(START, localPlayerId, localName)];
+          enemies = [];
+          lives = STARTING_LIVES;
+          roomLabel.textContent = `ROOM ${roomCode} · ${STARTING_LIVES} LIVES`;
+          level = 1;
+          ripples = [];
+          gameState = "lobby";
+          showRoomPanel(true);
+          lobbyStatus.textContent = "Room created. Share the code so your friends can join.";
+          publishSnapshot();
+          return;
+        }
+        if (message.type === "joined") {
+          localPlayerId = message.playerId;
+          hostId = message.hostId;
+          roomCode = message.roomCode;
+          isHost = false;
+          players = message.players.map((player) => ({ ...player }));
+          gameState = message.gameState || "lobby";
+          menuOverlay.hidden = false;
+          introPanel.hidden = true;
+          lobbyPanel.hidden = true;
+          roomPanel.hidden = false;
+          showRoomPanel(false);
+          lobbyStatus.textContent = "Connected. Waiting for the host to start.";
+          if (message.snapshot) handleSnapshot(message.snapshot);
+          else renderPlayerList();
+          return;
+        }
+        if (message.type === "playerJoined") {
+          hostId = message.hostId || hostId;
+          if (isHost && !players.some((player) => player.id === message.player.id)) {
+            const spawn = spawnCell(players.length);
+            players.push(playerAt(spawn, message.player.id, message.player.name));
+            renderPlayerList();
+            lobbyStatus.textContent = `${players.length}/5 players connected.`;
+            publishSnapshot();
+          } else if (!isHost) {
+            players = message.players.map((player) => players.find((existing) => existing.id === player.id) || player);
+            renderPlayerList();
+          }
+          return;
+        }
+        if (message.type === "playerLeft") {
+          players = players.filter((player) => player.id !== message.playerId);
+          renderPlayerList();
+          if (isHost) publishSnapshot();
+          return;
+        }
+        if (message.type === "input" && isHost) {
+          const player = players.find((item) => item.id === message.playerId);
+          if (!player) return;
+          if (message.key) player.keys[message.key] = message.down;
+          if (typeof message.panic === "boolean") player.panic = message.panic;
+          if (message.noise && gameState === "playing") emitRipple(player, 1, 250, "#ff805f");
+          return;
+        }
+        if (message.type === "snapshot" && !isHost) {
+          handleSnapshot(message.snapshot);
+          return;
+        }
+        if (message.type === "roomClosed") {
+          clearRoomState();
+          menuOverlay.hidden = false;
+          introPanel.hidden = true;
+          lobbyPanel.hidden = false;
+          roomPanel.hidden = true;
+          lobbyStatus.textContent = "The room closed because its host left.";
+          return;
+        }
+        if (message.type === "left") {
+          clearRoomState();
+        }
+      }
+
+      function clearRoomState() {
+        roomCode = "";
+        localPlayerId = "";
+        hostId = "";
+        isHost = false;
+        players = [];
+        enemies = [];
+        ripples = [];
+        gameState = "menu";
+        roomLabel.textContent = "NO ROOM";
+        renderPlayerList();
+      }
+
+      function createRoom() {
+        localName = playerNameInput.value.trim();
+        if (!localName) {
+          lobbyStatus.textContent = "Enter your name before creating a room.";
+          playerNameInput.focus();
+          return;
+        }
+        lobbyStatus.textContent = "Connecting to the online room server…";
+        connectServer().then(() => {
+          postRoom({ type: "create", name: localName });
+        }).catch((error) => {
+          lobbyStatus.textContent = error.message;
+        });
+      }
+
+      function joinRoom() {
+        localName = playerNameInput.value.trim();
+        const code = joinCodeInput.value.trim().toUpperCase();
+        if (!localName) {
+          lobbyStatus.textContent = "Enter your name before joining a room.";
+          playerNameInput.focus();
+          return;
+        }
+        if (!/^[A-Z0-9]{5}$/.test(code)) {
+          lobbyStatus.textContent = "Enter a valid 5-character room code.";
+          return;
+        }
+        lobbyStatus.textContent = "Connecting to the online room server…";
+        connectServer().then(() => {
+          postRoom({ type: "join", roomCode: code, name: localName });
+        }).catch((error) => {
+          lobbyStatus.textContent = error.message;
+        });
+        lobbyStatus.textContent = "Looking for room…";
+      }
+
+      function startGame() {
+        if (!isHost) return;
+        makeMaze();
+        players.forEach((player, index) => {
+          const spawn = spawnCell(index, player.id);
+          Object.assign(player, playerAt(spawn, player.id, player.name));
+        });
+        createEnemies();
+        ripples = [];
+        rapidKeys = [];
+        noisePressure = 0;
+        gameState = "playing";
+        menuOverlay.hidden = true;
+        overlay.hidden = true;
+        heldKeys.clear();
+        publishSnapshot();
+      }
+
+      function leaveRoom() {
+        if (socket && socket.readyState === WebSocket.OPEN && roomCode) {
+          postRoom({ type: "leave" });
+        }
+        clearRoomState();
+        overlay.hidden = true;
+        menuOverlay.hidden = false;
+        introPanel.hidden = true;
+        lobbyPanel.hidden = false;
+        roomPanel.hidden = true;
+        lobbyStatus.textContent = "";
+      }
+
+      function finishGame(result, announce = true) {
+        if (gameState === result) return;
+        gameState = result;
+        heldKeys.clear();
+        overlayTitle.textContent = result === "won" ? "You found the quiet" : "The silence is broken";
+        overlayCopy.innerHTML = result === "won"
+          ? `You escaped level ${level} together.<br>The echoes will remember.`
+          : '<span class="warning">The hunters caught you.</span><br>Gather your partner and try again.';
+        actionButton.textContent = isHost ? "Restart together" : "Back to room";
+        overlay.hidden = false;
+        if (announce && isHost) publishSnapshot();
+      }
+
+      function emitRipple(source, strength, maxRadius, color) {
+        ripples.push({ x: source.x, y: source.y, radius: 0, previousRadius: 0, maxRadius, speed: strength > .7 ? 320 : 115, strength, color, heardBy: new Set() });
+      }
+
+      function registerKeyPress(key) {
+        const now = performance.now();
+        rapidKeys = rapidKeys.filter((time) => now - time < 520);
+        rapidKeys.push(now);
+        if (rapidKeys.length >= 5 && rapidSoundTimer <= 0) {
+          if (isHost) {
+            const player = players.find((item) => item.id === localPlayerId);
+            if (player) emitRipple(player, 1, 250, "#ff805f");
+          } else postRoom({ type: "input", noise: true });
+          rapidSoundTimer = .85;
+          noisePressure = 1;
+          rapidKeys = [];
+        }
+      }
+
+      function updatePlayers(delta) {
+        for (const player of players) {
+          if (player.escaped) continue;
+          player.safe = Math.max(0, player.safe - delta);
+          const left = player.keys.ArrowLeft || player.keys.a;
+          const right = player.keys.ArrowRight || player.keys.d;
+          const up = player.keys.ArrowUp || player.keys.w;
+          const down = player.keys.ArrowDown || player.keys.s;
+          let dx = Number(Boolean(right)) - Number(Boolean(left));
+          let dy = Number(Boolean(down)) - Number(Boolean(up));
+          const moving = dx !== 0 || dy !== 0;
+          const running = moving && player.panic;
+          if (moving) {
+            const length = Math.hypot(dx, dy);
+            const speed = running ? 176 : 105;
+            dx = dx / length * speed * delta;
+            dy = dy / length * speed * delta;
+            if (walkableAt(player.x + dx, player.y, player.radius)) player.x += dx;
+            if (walkableAt(player.x, player.y + dy, player.radius)) player.y += dy;
+            player.normalTimer -= delta;
+            if (player.normalTimer <= 0) {
+              emitRipple(player, running ? .75 : .25, running ? 118 : 43, running ? "#f5b56b" : (players.indexOf(player) === 0 ? "#91d8dc" : "#8acbff"));
+              player.normalTimer = running ? .25 : .55;
+            }
+            if (running) {
+              player.panicTimer -= delta;
+              if (player.panicTimer <= 0) {
+                emitRipple(player, 1, 290, "#ff765e");
+                player.panicTimer = .62;
+              }
+            } else player.panicTimer = 0;
+          } else {
+            player.normalTimer = 0;
+            player.panicTimer = 0;
+          }
+          const exit = cellCenter(EXIT);
+          if (Math.hypot(player.x - exit.x, player.y - exit.y) < 11) player.escaped = true;
+        }
+        if (players.length && players.every((player) => player.escaped)) advanceLevel();
+        const localPlayer = players.find((player) => player.id === localPlayerId);
+        if (localPlayer && noisePressure > .65) {
+          signalLabel.textContent = "DANGER";
+          signalLabel.style.color = "#ff9274";
+        } else if (noisePressure > .22) {
+          signalLabel.textContent = "AUDIBLE";
+          signalLabel.style.color = "#e6c27a";
+        } else {
+          signalLabel.textContent = "QUIET";
+          signalLabel.style.color = "#7de8c2";
+        }
+        noisePressure = Math.max(0, noisePressure - delta * .38);
+      }
+
+      function advanceLevel() {
+        if (level >= MAX_LEVEL) { finishGame("won"); return; }
+        level += 1;
+        makeMaze();
+        players.forEach((player, index) => {
+          const spawn = spawnCell(index, player.id);
+          Object.assign(player, playerAt(spawn, player.id, player.name));
+        });
+        createEnemies();
+        ripples = [];
+      }
+
+      function updateEnemies(delta) {
+        for (const enemy of enemies) {
+          enemy.alerted = Math.max(0, enemy.alerted - delta);
+          enemy.pathTimer -= delta;
+          if (enemy.pathTimer <= 0) {
+            if (enemy.alerted > 0 && enemy.target) {
+              enemy.path = findPath(enemy.cell, enemy.target).slice(1);
+              enemy.pathTimer = .2;
+            } else {
+              enemy.alerted = 0;
+              if (!enemy.path.length || enemy.roamTimer <= 0) {
+                const neighbors = [[0, -1], [1, 0], [0, 1], [-1, 0]]
+                  .map(([dx, dy]) => ({ x: enemy.cell.x + dx, y: enemy.cell.y + dy }))
+                  .filter((cell) => isOpen(cell.x, cell.y));
+                enemy.path = neighbors.length ? [neighbors[Math.floor(Math.random() * neighbors.length)]] : [];
+                enemy.roamTimer = .7 + Math.random();
+              }
+              enemy.pathTimer = .3;
+              enemy.roamTimer -= delta;
+            }
+          }
+          if (enemy.path.length) {
+            const destination = cellCenter(enemy.path[0]);
+            const distance = Math.hypot(destination.x - enemy.x, destination.y - enemy.y);
+            const step = (enemy.alerted > 0 ? 112 + level * 14 : 40 + level * 5) * delta;
+            if (distance <= step + 1) {
+              enemy.x = destination.x; enemy.y = destination.y;
+              enemy.cell = enemy.path.shift(); enemy.pathTimer = Math.min(enemy.pathTimer, .03);
+            } else {
+              enemy.x += (destination.x - enemy.x) / distance * step;
+              enemy.y += (destination.y - enemy.y) / distance * step;
+            }
+          }
+          for (const player of players) {
+            if (!player.escaped && player.safe <= 0 && Math.hypot(enemy.x - player.x, enemy.y - player.y) < 13) {
+              lives -= 1;
+              if (lives <= 0) { finishGame("lost"); return; }
+              const spawn = spawnCell(players.indexOf(player), player.id);
+              Object.assign(player, playerAt(spawn, player.id, player.name));
+              player.safe = 2;
+              roomLabel.textContent = `ROOM ${roomCode} · ${lives} LIVES`;
+            }
+          }
+        }
+      }
+
+      function updateRipples(delta) {
+        for (const ripple of ripples) {
+          ripple.previousRadius = ripple.radius;
+          ripple.radius = Math.min(ripple.maxRadius, ripple.radius + ripple.speed * delta);
+          if (ripple.strength < .65) continue;
+          for (const enemy of enemies) {
+            if (ripple.heardBy.has(enemy.id)) continue;
+            const distance = Math.hypot(enemy.x - ripple.x, enemy.y - ripple.y);
+            if (distance <= ripple.radius + 9 && distance >= ripple.previousRadius - 9) {
+              enemy.alerted = 6.2 + level * .75;
+              enemy.target = cellAt(ripple.x, ripple.y);
+              enemy.pathTimer = 0;
+              ripple.heardBy.add(enemy.id);
+            }
+          }
+        }
+        ripples = ripples.filter((ripple) => ripple.radius < ripple.maxRadius);
+      }
+
+      function handleInput(key, down) {
+        if (!MOVE_KEYS.has(key) && !PANIC_KEYS.has(key)) return;
+        if (key === "Shift" || key === " ") {
+          if (isHost) {
+            const player = players.find((item) => item.id === localPlayerId);
+            if (player) player.panic = down;
+          } else postRoom({ type: "input", panic: down });
+          return;
+        }
+        if (down && !heldKeys.has(key)) registerKeyPress(key);
+        if (down) heldKeys.add(key); else heldKeys.delete(key);
+        if (isHost) {
+          const player = players.find((item) => item.id === localPlayerId);
+          if (player) player.keys[key] = down;
+        } else postRoom({ type: "input", key, down });
+      }
+
+      function resizeCanvas() {
+        const bounds = canvas.getBoundingClientRect();
+        const ratio = Math.min(window.devicePixelRatio || 1, 2);
+        canvas.width = Math.round(bounds.width * ratio);
+        canvas.height = Math.round(bounds.height * ratio);
+        ctx.setTransform(canvas.width / WORLD_WIDTH, 0, 0, canvas.height / WORLD_HEIGHT, 0, 0);
+      }
+
+      function drawMaze() {
+        ctx.fillStyle = "#080e15";
+        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        for (let y = 0; y < ROWS; y += 1) for (let x = 0; x < COLS; x += 1) {
+          if (maze[y][x] === "#") {
+            ctx.fillStyle = (x + y) % 2 ? "#111c25" : "#14212a";
+            ctx.fillRect(x * TILE, y * TILE, TILE, TILE);
+            ctx.strokeStyle = "#1a2b34"; ctx.lineWidth = 1;
+            ctx.strokeRect(x * TILE + .5, y * TILE + .5, TILE - 1, TILE - 1);
+          } else { ctx.fillStyle = "#0a1219"; ctx.fillRect(x * TILE, y * TILE, TILE, TILE); }
+        }
+        const exit = cellCenter(EXIT);
+        const glow = ctx.createRadialGradient(exit.x, exit.y, 2, exit.x, exit.y, 27);
+        glow.addColorStop(0, "#74f4b955"); glow.addColorStop(1, "#74f4b900");
+        ctx.fillStyle = glow; ctx.fillRect(exit.x - 28, exit.y - 28, 56, 56);
+        ctx.strokeStyle = "#75efae"; ctx.lineWidth = 1.5;
+        ctx.strokeRect(EXIT.x * TILE + 5, EXIT.y * TILE + 5, TILE - 10, TILE - 10);
+        ctx.fillStyle = "#adffd0"; ctx.font = "10px Courier New"; ctx.textAlign = "center";
+        ctx.fillText("EXIT", exit.x, exit.y + 3);
+      }
+
+      function drawRipples() {
+        for (const ripple of ripples) {
+          const fade = 1 - ripple.radius / ripple.maxRadius;
+          ctx.beginPath(); ctx.arc(ripple.x, ripple.y, ripple.radius, 0, Math.PI * 2);
+          ctx.strokeStyle = ripple.color; ctx.globalAlpha = Math.max(.08, fade * (ripple.strength > .65 ? .68 : .26));
+          ctx.lineWidth = ripple.strength > .65 ? 2 : 1; ctx.stroke(); ctx.globalAlpha = 1;
+        }
+      }
+
+      function drawPlayers(time) {
+        for (const player of players) {
+          ctx.save();
+          ctx.shadowBlur = player.panic ? 19 : 14;
+          const color = COLORS[players.indexOf(player) % COLORS.length];
+          ctx.shadowColor = player.panic ? "#ff805f" : color;
+          ctx.fillStyle = player.panic ? "#ffaf76" : color;
+          ctx.beginPath();
+          ctx.arc(player.x, player.y, player.radius * (1 + Math.sin(time * .006) * .1), 0, Math.PI * 2);
+          ctx.fill(); ctx.restore();
+          ctx.fillStyle = "#d6e5e8"; ctx.font = "8px Courier New"; ctx.textAlign = "center";
+          ctx.fillText(player.name.slice(0, 10), player.x, player.y - 13);
+        }
+      }
+
+      function drawEnemies(time) {
+        for (const enemy of enemies) {
+          const angry = enemy.alerted > 0;
+          ctx.save(); ctx.translate(enemy.x, enemy.y);
+          ctx.shadowBlur = angry ? 20 : 11; ctx.shadowColor = angry ? "#ff674f" : "#8c3942";
+          ctx.fillStyle = angry ? "#ff765d" : "#a94f58";
+          const wobble = Math.sin(time * .005 + enemy.id * 2) * 1.5;
+          ctx.beginPath(); ctx.moveTo(-8, -5 + wobble); ctx.lineTo(-3, -9); ctx.lineTo(0, -5);
+          ctx.lineTo(4, -9); ctx.lineTo(8, -4 + wobble); ctx.lineTo(7, 5); ctx.lineTo(2, 8);
+          ctx.lineTo(-4, 7); ctx.lineTo(-8, 3); ctx.closePath(); ctx.fill();
+          ctx.fillStyle = angry ? "#ffd1b4" : "#c27a73";
+          ctx.fillRect(-3, -1, 2, 2); ctx.fillRect(2, -1, 2, 2); ctx.restore();
+        }
+      }
+
+      function drawDarkness() {
+        if (!players.length) return;
+        ctx.save();
+        ctx.fillStyle = "rgba(2, 5, 9, .94)";
+        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        ctx.globalCompositeOperation = "destination-out";
+        const visionRadius = Math.max(82, 158 - level * 14);
+        for (const player of players) {
+          const glow = ctx.createRadialGradient(player.x, player.y, 18, player.x, player.y, visionRadius);
+          glow.addColorStop(0, "rgba(0, 0, 0, 1)");
+          glow.addColorStop(.62, "rgba(0, 0, 0, .82)");
+          glow.addColorStop(1, "rgba(0, 0, 0, 0)");
+          ctx.fillStyle = glow;
+          ctx.fillRect(player.x - visionRadius, player.y - visionRadius, visionRadius * 2, visionRadius * 2);
+        }
+        ctx.restore();
+      }
+
+      function render(time) {
+        ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        drawMaze(); drawRipples(); drawEnemies(time); drawPlayers(time);
+        if (gameState === "playing") drawDarkness();
+        ctx.fillStyle = "#71858e"; ctx.font = "10px Courier New"; ctx.textAlign = "left";
+        ctx.fillText(`LEVEL ${level}/${MAX_LEVEL}  ·  LIVES ${lives}  ·  PLAYERS ${players.length}`, 10, 16);
+      }
+
+      function frame(time) {
+        const delta = Math.min((time - lastFrame) / 1000 || 0, .04);
+        lastFrame = time;
+        if (gameState === "playing" && isHost) {
+          rapidSoundTimer = Math.max(0, rapidSoundTimer - delta);
+          updatePlayers(delta); updateRipples(delta); updateEnemies(delta);
+          sendTimer += delta;
+          if (sendTimer >= .12) { publishSnapshot(); sendTimer = 0; }
+        } else if (gameState === "playing" && !isHost) {
+          sendTimer += delta;
+          if (sendTimer >= 1.5) { postRoom({ type: "input", heartbeat: true }); sendTimer = 0; }
+        }
+        render(time);
+        requestAnimationFrame(frame);
+      }
+
+      document.getElementById("continue-button").addEventListener("click", () => {
+        introPanel.hidden = true; lobbyPanel.hidden = false;
+      });
+      document.getElementById("create-room").addEventListener("click", createRoom);
+      document.getElementById("join-room").addEventListener("click", joinRoom);
+      document.getElementById("copy-code").addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(roomCode);
+          lobbyStatus.textContent = "Room code copied.";
+        } catch (error) {
+          lobbyStatus.textContent = `Room code: ${roomCode} (select and copy it manually).`;
+        }
+      });
+      startRoomButton.addEventListener("click", () => {
+        if (gameState === "playing") level = 1;
+        startGame();
+      });
+      document.getElementById("leave-room").addEventListener("click", leaveRoom);
+      actionButton.addEventListener("click", () => {
+        overlay.hidden = true;
+        if (isHost) { level = 1; lives = STARTING_LIVES; startGame(); }
+        else showRoomPanel(false);
+      });
+      joinCodeInput.addEventListener("input", () => { joinCodeInput.value = joinCodeInput.value.toUpperCase(); });
+
+      window.addEventListener("keydown", (event) => {
+        if (MOVE_KEYS.has(event.key) || PANIC_KEYS.has(event.key)) event.preventDefault();
+        if (gameState === "playing" && !event.repeat) handleInput(event.key, true);
+      });
+      window.addEventListener("keyup", (event) => handleInput(event.key, false));
+      window.addEventListener("blur", () => {
+        for (const key of [...heldKeys]) handleInput(key, false);
+        handleInput("Shift", false);
+      });
+
+      document.querySelectorAll(".dpad [data-key]").forEach((button) => {
+        const key = button.dataset.key;
+        button.addEventListener("pointerdown", (event) => {
+          event.preventDefault(); button.setPointerCapture(event.pointerId);
+          button.classList.add("pressed"); handleInput(key, true);
+        });
+        const release = (event) => {
+          event.preventDefault(); button.classList.remove("pressed"); handleInput(key, false);
+        };
+        button.addEventListener("pointerup", release);
+        button.addEventListener("pointercancel", release);
+        button.addEventListener("lostpointercapture", release);
+      });
+      const runButton = document.getElementById("run-button");
+      runButton.addEventListener("pointerdown", (event) => {
+        event.preventDefault(); runButton.setPointerCapture(event.pointerId);
+        runButton.classList.add("pressed"); handleInput("Shift", true);
+      });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach((name) => runButton.addEventListener(name, (event) => {
+        event.preventDefault(); runButton.classList.remove("pressed"); handleInput("Shift", false);
+      }));
+      window.addEventListener("resize", resizeCanvas);
+
+      resizeCanvas();
+      makeMaze();
+      requestAnimationFrame(frame);
+    })();
+  </script>
+</body>
+</html>
