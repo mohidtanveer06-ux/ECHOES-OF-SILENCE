@@ -12,6 +12,9 @@ const MAX_PLAYERS = 5;
 const MAX_ROOMS = 250;
 const MAX_MESSAGE_BYTES = 32 * 1024;
 const ROOM_CODE_CHARS = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
+const DIFFICULTY_LIVES = { easy: 5, medium: 3, hard: 2 };
+const ECHO_DURATION = 2.2;
+const ECHO_COOLDOWN = 8;
 const rooms = new Map();
 
 const server = http.createServer((request, response) => {
@@ -177,7 +180,15 @@ function handleRoomMessage(player, message) {
         snapshot.maze.some((row) => !Array.isArray(row) || row.length !== 21 || row.some((cell) => cell !== "." && cell !== "#")) ||
         !Array.isArray(snapshot.players) || !Array.isArray(snapshot.enemies) ||
         !Number.isInteger(snapshot.level) || snapshot.level < 1 || snapshot.level > 5 ||
-        !Number.isInteger(snapshot.lives) || snapshot.lives < 0 || snapshot.lives > 2 ||
+        !Object.hasOwn(DIFFICULTY_LIVES, snapshot.difficulty) ||
+        !Number.isInteger(snapshot.lives) || snapshot.lives < 0 || snapshot.lives > DIFFICULTY_LIVES[snapshot.difficulty] ||
+        !snapshot.keyCell || typeof snapshot.keyCell !== "object" || Array.isArray(snapshot.keyCell) ||
+        !Number.isInteger(snapshot.keyCell.x) || snapshot.keyCell.x < 1 || snapshot.keyCell.x >= 20 ||
+        !Number.isInteger(snapshot.keyCell.y) || snapshot.keyCell.y < 1 || snapshot.keyCell.y >= 14 ||
+        snapshot.maze[snapshot.keyCell.y][snapshot.keyCell.x] !== "." ||
+        typeof snapshot.keyCollected !== "boolean" ||
+        !Number.isFinite(snapshot.echoRevealTimer) || snapshot.echoRevealTimer < 0 || snapshot.echoRevealTimer > ECHO_DURATION ||
+        !Number.isFinite(snapshot.echoCooldownTimer) || snapshot.echoCooldownTimer < 0 || snapshot.echoCooldownTimer > ECHO_COOLDOWN ||
         !["lobby", "playing", "won", "lost"].includes(snapshot.gameState)) {
       return sendError(player.socket, "BAD_SNAPSHOT", "Invalid game state.");
     }
@@ -252,6 +263,7 @@ function handleRoomMessage(player, message) {
     }
     if (typeof message.panic === "boolean") input.panic = message.panic;
     if (message.noise === true) input.noise = true;
+    if (message.echo === true) input.echo = true;
     if (!Object.keys(input).length) return;
     const host = room.players.get(room.hostId);
     if (host) send(host.socket, { type: "input", playerId: player.id, ...input });

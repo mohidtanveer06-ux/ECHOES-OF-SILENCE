@@ -65,6 +65,28 @@
       letter-spacing: .12em;
     }
 
+    .audio-controls {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 8px;
+      margin: 0 0 10px;
+    }
+
+    .audio-controls button {
+      min-width: 0;
+      padding: 5px 7px;
+      border-color: #344d52;
+      background: #0b151b;
+      color: #9ff2d3;
+      font-size: 9px;
+      letter-spacing: .08em;
+    }
+
+    .audio-controls .test-sound { border-color: #344d52; color: #b1c4c5; }
+    .audio-controls label { display: flex; align-items: center; gap: 5px; color: #71858e; font-size: 9px; }
+    .audio-controls input { width: 68px; accent-color: #55c5a6; }
+
     .frame {
       position: relative;
       overflow: hidden;
@@ -105,7 +127,7 @@
       font-weight: 700;
       letter-spacing: .22em;
       text-shadow: 0 0 28px #60e8bb88;
-      animation: mark-glow 2.2s ease-in-out infinite alternate;
+      animation: mark-arrive .8s cubic-bezier(.18,.8,.22,1) .15s both, mark-glow 2.2s ease-in-out 1s infinite alternate;
     }
 
     .game-name {
@@ -113,11 +135,19 @@
       color: #e6f2ed;
       font-size: clamp(17px, 4vw, 27px);
       letter-spacing: .13em;
-      animation: subtitle-arrive 1s .3s both;
+      animation: subtitle-arrive 1s .95s both;
     }
+
+    .intro-card > p { animation: title-arrive .8s 1.5s both; }
+    .intro-card > button { animation: title-arrive .7s 1.65s both; }
 
     @keyframes title-arrive {
       from { opacity: 0; transform: translateY(18px) scale(.94); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes mark-arrive {
+      from { opacity: 0; transform: translateY(-18px) scale(.72); }
       to { opacity: 1; transform: translateY(0) scale(1); }
     }
 
@@ -129,6 +159,34 @@
     @keyframes mark-glow {
       from { text-shadow: 0 0 15px #60e8bb55; }
       to { text-shadow: 0 0 36px #60e8bbcc; }
+    }
+
+    .difficulty-picker { width: 100%; min-width: 0; margin: 18px 0 14px; }
+
+    .difficulty-picker > .eyebrow { display: block; margin-bottom: 8px; }
+
+    .difficulty-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; width: 100%; }
+
+    .difficulty-option {
+      width: 100%;
+      min-width: 0;
+      min-height: 62px;
+      padding: 8px 2px;
+      border: 1px solid #344d52;
+      border-radius: 0;
+      background: #0b151b;
+      color: #b1c4c5;
+      font: inherit;
+      cursor: pointer;
+    }
+
+    .difficulty-option strong { display: block; margin-bottom: 4px; color: #d6e5e8; font-size: clamp(9px, 2.8vw, 12px); }
+    .difficulty-option span { display: block; color: #71858e; font-size: clamp(7px, 2.2vw, 9px); line-height: 1.4; }
+    .difficulty-option[aria-pressed="true"] { border-color: #55c5a6; background: #10231f; box-shadow: inset 0 0 18px #55c5a611; }
+    .difficulty-option[aria-pressed="true"] strong { color: #9ff2d3; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .intro-card, .brand-mark, .game-name, .intro-card > p, .intro-card > button { animation: none; }
     }
 
     .lobby-panel { width: min(100%, 410px); }
@@ -229,6 +287,8 @@
 
     .mobile-controls .empty { visibility: hidden; }
     .mobile-controls .run-button { width: 94px; height: 60px; font-size: 11px; }
+    .mobile-controls .echo-button { width: 84px; height: 60px; font-size: 10px; }
+    .mobile-controls button:disabled { border-color: #263c41; background: #0a1118; color: #71858e; box-shadow: none; }
 
     .signal-mark {
       width: 68px;
@@ -311,6 +371,13 @@
       footer span { display: block; margin: 3px 0; }
     }
 
+    @media (max-width: 380px) {
+      .mobile-controls { gap: 5px; padding: 7px; }
+      .dpad { grid-template: repeat(2, 42px) / repeat(3, 40px); gap: 3px; }
+      .mobile-controls .run-button { width: 70px; }
+      .mobile-controls .echo-button { width: 66px; }
+    }
+
     @media (max-height: 760px) {
       body { align-content: start; }
     }
@@ -346,12 +413,19 @@
       <div class="readout" aria-live="polite">
         <span class="readout-label">Signal level</span>
         <span class="readout-value" id="signal-label">QUIET</span>
+        <span class="readout-label">Difficulty</span>
+        <span class="readout-value" id="mode-value">HARD</span>
         <span class="readout-label" id="room-label">NO ROOM</span>
       </div>
     </header>
+    <div class="audio-controls" aria-label="Sound settings">
+      <button id="sound-toggle" type="button" aria-pressed="true">Mute sound</button>
+      <button class="test-sound" id="test-sound" type="button">Test sound</button>
+      <label for="sound-volume">VOL<input id="sound-volume" type="range" min="0" max="100" value="65"></label>
+    </div>
 
     <section class="frame" aria-label="Echoes of Silence game">
-      <canvas id="game" aria-label="Top-down maze game. Use arrow keys or WASD to reach the green exit."></canvas>
+      <canvas id="game" aria-label="Top-down maze game. Find the golden key to unlock the exit. Use arrow keys or WASD."></canvas>
       <div class="overlay" id="overlay" hidden>
         <div class="card">
           <div class="signal-mark" aria-hidden="true">∿</div>
@@ -364,7 +438,21 @@
         <div class="card intro-card" id="intro-panel">
           <div class="brand-mark">MT</div>
           <div class="game-name">ECHOES OF SILENCE</div>
-          <p>Silence is survival.<br>Can you escape what you cannot see?</p>
+          <p>Find the golden key to unlock the exit.<br>Silence is survival. Can you escape what you cannot see?</p>
+          <div class="difficulty-picker">
+            <span class="eyebrow" id="difficulty-label">CHOOSE DIFFICULTY</span>
+            <div class="difficulty-options" role="group" aria-labelledby="difficulty-label">
+              <button class="difficulty-option" type="button" data-difficulty="easy" aria-pressed="false">
+                <strong>Easy</strong><span>5 lives · fewer hunters</span>
+              </button>
+              <button class="difficulty-option" type="button" data-difficulty="medium" aria-pressed="false">
+                <strong>Medium</strong><span>3 lives · balanced chase</span>
+              </button>
+              <button class="difficulty-option" type="button" data-difficulty="hard" aria-pressed="true">
+                <strong>Hard</strong><span>2 lives · original challenge</span>
+              </button>
+            </div>
+          </div>
           <button id="continue-button" type="button">Enter the dark</button>
         </div>
         <div class="lobby-panel" id="lobby-panel" hidden>
@@ -382,7 +470,7 @@
         <div class="lobby-panel" id="room-panel" hidden>
           <div class="eyebrow">YOUR ROOM CODE</div>
           <div class="room-code" id="room-code">-----</div>
-          <p>Up to 5 players · 5 harder levels · only 2 shared lives.<br>Darkness closes in and hunters get faster each level.</p>
+          <p id="room-description">Up to 5 players · 5 levels.<br>Darkness closes in and hunters get faster each level.</p>
           <ul class="player-list" id="player-list" aria-live="polite"></ul>
           <div class="lobby-actions">
             <button id="copy-code" type="button">Copy room code</button>
@@ -403,13 +491,14 @@
         <button data-key="ArrowDown" aria-label="Move down">▼</button>
         <button data-key="ArrowRight" aria-label="Move right">▶</button>
       </div>
+      <button class="echo-button" id="echo-button" type="button" aria-label="Echo pulse. Reveal the maze and alert hunters." disabled>ECHO</button>
       <button class="run-button" id="run-button" aria-label="Hold to run">HOLD<br>TO RUN</button>
     </div>
 
     <footer>
       <span class="key">MOVE &nbsp; WASD / ARROWS / TOUCH</span>
       <span class="key">RUN &nbsp; HOLD SHIFT / SPACE / RUN BUTTON</span>
-      <span>Small sounds fade. Loud ones travel.</span>
+      <span>PRESS E TO ECHO · FIND THE KEY · SMALL SOUNDS FADE</span>
     </footer>
   </main>
 
@@ -435,10 +524,24 @@
       const joinCodeInput = document.getElementById("join-code");
       const startRoomButton = document.getElementById("start-room");
       const playerList = document.getElementById("player-list");
+      const soundToggle = document.getElementById("sound-toggle");
+      const testSoundButton = document.getElementById("test-sound");
+      const soundVolume = document.getElementById("sound-volume");
+      const echoButton = document.getElementById("echo-button");
       const COLS = 21, ROWS = 15, TILE = 28;
       const WORLD_WIDTH = COLS * TILE, WORLD_HEIGHT = ROWS * TILE;
+      const darknessCanvas = document.createElement("canvas");
+      darknessCanvas.width = WORLD_WIDTH;
+      darknessCanvas.height = WORLD_HEIGHT;
+      const darknessCtx = darknessCanvas.getContext("2d");
       const MAX_LEVEL = 5;
-      const STARTING_LIVES = 2;
+      const ECHO_DURATION = 2.2;
+      const ECHO_COOLDOWN = 8;
+      const DIFFICULTIES = {
+        easy: { label: "EASY", lives: 5, hunters: -2, speed: .72, vision: 48 },
+        medium: { label: "MEDIUM", lives: 3, hunters: -1, speed: .88, vision: 24 },
+        hard: { label: "HARD", lives: 2, hunters: 0, speed: 1, vision: 0 }
+      };
       const START = { x: 1, y: 1 }, EXIT = { x: COLS - 2, y: ROWS - 2 };
       const MOVE_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
       const PANIC_KEYS = new Set(["Shift", " "]);
@@ -451,7 +554,12 @@
       let ripples = [];
       let gameState = "menu";
       let level = 1;
-      let lives = STARTING_LIVES;
+      let difficulty = "hard";
+      let lives = DIFFICULTIES[difficulty].lives;
+      let keyCell = null;
+      let keyCollected = false;
+      let echoRevealTimer = 0;
+      let echoCooldownTimer = 0;
       let lastFrame = 0;
       let sendTimer = 0;
       let localPlayerId = "";
@@ -464,6 +572,10 @@
       let noisePressure = 0;
       let rapidKeys = [];
       let rapidSoundTimer = 0;
+      let audioContext = null;
+      let masterGain = null;
+      let soundEnabled = true;
+      let ambientStarted = false;
       const heldKeys = new Set();
 
       function makeMaze() {
@@ -483,6 +595,19 @@
           maze[next.y][next.x] = ".";
           stack.push(next);
         }
+        const loopCandidates = [];
+        for (let y = 1; y < ROWS - 1; y += 1) {
+          for (let x = 1; x < COLS - 1; x += 1) {
+            if (maze[y][x] !== "#" || (maze[y][x - 1] !== "." || maze[y][x + 1] !== ".") &&
+                (maze[y - 1][x] !== "." || maze[y + 1][x] !== ".")) continue;
+            loopCandidates.push({ x, y });
+          }
+        }
+        for (let index = loopCandidates.length - 1; index > 0; index -= 1) {
+          const swapIndex = Math.floor(Math.random() * (index + 1));
+          [loopCandidates[index], loopCandidates[swapIndex]] = [loopCandidates[swapIndex], loopCandidates[index]];
+        }
+        for (const cell of loopCandidates.slice(0, 14)) maze[cell.y][cell.x] = ".";
       }
 
       function cellCenter(cell) { return { x: cell.x * TILE + TILE / 2, y: cell.y * TILE + TILE / 2 }; }
@@ -519,6 +644,84 @@
         return path.reverse();
       }
 
+      function placeKey() {
+        const candidates = [];
+        for (let y = 1; y < ROWS - 1; y += 1) {
+          for (let x = 1; x < COLS - 1; x += 1) {
+            if (isOpen(x, y) && (x !== START.x || y !== START.y) &&
+                (x !== EXIT.x || y !== EXIT.y) && Math.abs(x - EXIT.x) + Math.abs(y - EXIT.y) > 4) {
+              const distance = findPath(START, { x, y }).length;
+              if (distance > 0) candidates.push({ x, y, distance });
+            }
+          }
+        }
+        candidates.sort((first, second) => second.distance - first.distance);
+        const farthestDistance = candidates[0]?.distance || 0;
+        const farCells = candidates.filter((cell) => cell.distance >= farthestDistance * .8);
+        const key = farCells[Math.floor(Math.random() * farCells.length)];
+        keyCell = key ? { x: key.x, y: key.y } : { x: START.x + 1, y: START.y };
+        keyCollected = false;
+      }
+
+      function updateSoundOutput() {
+        if (masterGain) masterGain.gain.setTargetAtTime(soundEnabled ? Number(soundVolume.value) / 100 * .8 : 0, audioContext.currentTime, .08);
+        soundToggle.textContent = soundEnabled ? "Mute sound" : "Sound off";
+        soundToggle.setAttribute("aria-pressed", String(soundEnabled));
+      }
+
+      function startAmbientSound() {
+        if (!window.AudioContext) {
+          soundToggle.disabled = true;
+          soundVolume.disabled = true;
+          return;
+        }
+        if (!audioContext) {
+          audioContext = new AudioContext();
+          masterGain = audioContext.createGain();
+          masterGain.gain.value = 0;
+          masterGain.connect(audioContext.destination);
+
+          const filter = audioContext.createBiquadFilter();
+          filter.type = "lowpass";
+          filter.frequency.value = 900;
+          filter.connect(masterGain);
+          for (const [frequency, gain] of [[146.83, .22], [196, .1], [246.94, .06]]) {
+            const oscillator = audioContext.createOscillator();
+            const toneGain = audioContext.createGain();
+            oscillator.type = "sine";
+            oscillator.frequency.value = frequency;
+            toneGain.gain.value = gain;
+            oscillator.connect(toneGain);
+            toneGain.connect(filter);
+            oscillator.start();
+          }
+        }
+        if (audioContext.state === "suspended") {
+          audioContext.resume().catch(() => {
+            lobbyStatus.textContent = "Sound could not start. Check your browser audio settings.";
+          });
+        }
+        ambientStarted = true;
+        updateSoundOutput();
+      }
+
+      function playKeySound() {
+        if (!ambientStarted || !soundEnabled) return;
+        const now = audioContext.currentTime;
+        const oscillator = audioContext.createOscillator();
+        const envelope = audioContext.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(520, now);
+        oscillator.frequency.exponentialRampToValueAtTime(1040, now + .18);
+        envelope.gain.setValueAtTime(.0001, now);
+        envelope.gain.exponentialRampToValueAtTime(.22, now + .025);
+        envelope.gain.exponentialRampToValueAtTime(.0001, now + .3);
+        oscillator.connect(envelope);
+        envelope.connect(masterGain);
+        oscillator.start(now);
+        oscillator.stop(now + .31);
+      }
+
       function playerAt(cell, id, name) {
         return { id, name, ...cellCenter(cell), radius: 7, keys: {}, panic: false, escaped: false, safe: 1.4, normalTimer: 0, panicTimer: 0, lastSeen: Date.now() };
       }
@@ -550,7 +753,7 @@
           if (isOpen(x, y) && fromStart > 7 && Math.abs(x - EXIT.x) + Math.abs(y - EXIT.y) > 2) candidates.push({ x, y });
         }
         enemies = [];
-        const hunterCount = 2 + level + Math.floor((players.length - 1) / 2);
+        const hunterCount = Math.max(1, 2 + level + Math.floor((players.length - 1) / 2) + DIFFICULTIES[difficulty].hunters);
         for (let index = 0; index < Math.min(hunterCount, candidates.length); index += 1) {
           const cell = candidates.splice(Math.floor(Math.random() * candidates.length), 1)[0];
           enemies.push({ ...cellCenter(cell), cell, id: index, alerted: 0, target: null, path: [], pathTimer: Math.random() * .3, roamTimer: 0 });
@@ -567,7 +770,8 @@
 
       function roomSnapshot() {
         return {
-          type: "snapshot", hostId: localPlayerId, gameState, maze, level, lives,
+          type: "snapshot", hostId: localPlayerId, gameState, maze, level, lives, difficulty, keyCell, keyCollected,
+          echoRevealTimer, echoCooldownTimer,
           players: players.map(({ id, name, x, y, radius, escaped, safe, keys, panic }) =>
             ({ id, name, x, y, radius, escaped, safe, keys, panic })),
           enemies: enemies.map(({ x, y, id, alerted }) => ({ x, y, id, alerted })),
@@ -632,9 +836,26 @@
         lobbyPanel.hidden = true;
         roomPanel.hidden = false;
         roomCodeLabel.textContent = roomCode;
+        updateRoomDescription();
         startRoomButton.hidden = !host;
         startRoomButton.textContent = gameState === "playing" ? "Restart level" : "Start game";
         renderPlayerList();
+      }
+
+      function updateRoomDescription() {
+        const selected = DIFFICULTIES[difficulty];
+        document.getElementById("room-description").textContent =
+          `${selected.label} · ${selected.lives} shared lives · ${difficulty === "hard" ? "original hunter speed" : difficulty === "medium" ? "fewer, slower hunters" : "fewer, slower hunters and brighter vision"}. Find a golden key to unlock each exit; five levels total.`;
+      }
+
+      function selectDifficulty(value) {
+        if (!Object.hasOwn(DIFFICULTIES, value)) return;
+        difficulty = value;
+        document.getElementById("mode-value").textContent = DIFFICULTIES[difficulty].label;
+        for (const button of document.querySelectorAll("[data-difficulty]")) {
+          button.setAttribute("aria-pressed", String(button.dataset.difficulty === difficulty));
+        }
+        updateRoomDescription();
       }
 
       function renderPlayerList() {
@@ -656,6 +877,11 @@
         ripples = (snapshot.ripples || []).map((ripple) => ({ ...ripple, speed: 0, heardBy: new Set() }));
         level = snapshot.level;
         lives = snapshot.lives;
+        keyCell = snapshot.keyCell;
+        keyCollected = snapshot.keyCollected;
+        echoRevealTimer = snapshot.echoRevealTimer;
+        echoCooldownTimer = snapshot.echoCooldownTimer;
+        selectDifficulty(snapshot.difficulty);
         renderPlayerList();
         if (snapshot.gameState === "playing") {
           gameState = "playing";
@@ -696,10 +922,13 @@
           roomCode = message.roomCode;
           isHost = true;
           makeMaze();
+          placeKey();
+          echoRevealTimer = 0;
+          echoCooldownTimer = 0;
           players = [playerAt(START, localPlayerId, localName)];
           enemies = [];
-          lives = STARTING_LIVES;
-          roomLabel.textContent = `ROOM ${roomCode} · ${STARTING_LIVES} LIVES`;
+          lives = DIFFICULTIES[difficulty].lives;
+          roomLabel.textContent = `ROOM ${roomCode} · ${lives} LIVES`;
           level = 1;
           ripples = [];
           gameState = "lobby";
@@ -751,6 +980,7 @@
           if (message.key) player.keys[message.key] = message.down;
           if (typeof message.panic === "boolean") player.panic = message.panic;
           if (message.noise && gameState === "playing") emitRipple(player, 1, 250, "#ff805f");
+          if (message.echo && gameState === "playing") activateEcho(player);
           return;
         }
         if (message.type === "snapshot" && !isHost) {
@@ -779,6 +1009,10 @@
         players = [];
         enemies = [];
         ripples = [];
+        keyCell = null;
+        keyCollected = false;
+        echoRevealTimer = 0;
+        echoCooldownTimer = 0;
         gameState = "menu";
         roomLabel.textContent = "NO ROOM";
         renderPlayerList();
@@ -823,6 +1057,9 @@
       function startGame() {
         if (!isHost) return;
         makeMaze();
+        placeKey();
+        echoRevealTimer = 0;
+        echoCooldownTimer = 0;
         players.forEach((player, index) => {
           const spawn = spawnCell(index, player.id);
           Object.assign(player, playerAt(spawn, player.id, player.name));
@@ -866,6 +1103,24 @@
 
       function emitRipple(source, strength, maxRadius, color) {
         ripples.push({ x: source.x, y: source.y, radius: 0, previousRadius: 0, maxRadius, speed: strength > .7 ? 320 : 115, strength, color, heardBy: new Set() });
+      }
+
+      function activateEcho(player) {
+        if (gameState !== "playing" || echoCooldownTimer > 0) return;
+        echoCooldownTimer = ECHO_COOLDOWN;
+        echoRevealTimer = ECHO_DURATION;
+        emitRipple(player, 1, 360, "#9ff2ff");
+        noisePressure = 1;
+      }
+
+      function requestEcho() {
+        if (gameState !== "playing") return;
+        if (isHost) {
+          const player = players.find((item) => item.id === localPlayerId);
+          if (player) activateEcho(player);
+        } else {
+          postRoom({ type: "input", echo: true });
+        }
       }
 
       function registerKeyPress(key) {
@@ -919,7 +1174,14 @@
             player.panicTimer = 0;
           }
           const exit = cellCenter(EXIT);
-          if (Math.hypot(player.x - exit.x, player.y - exit.y) < 11) player.escaped = true;
+          if (!keyCollected && keyCell) {
+            const key = cellCenter(keyCell);
+            if (Math.hypot(player.x - key.x, player.y - key.y) < 13) {
+              keyCollected = true;
+              playKeySound();
+            }
+          }
+          if (keyCollected && Math.hypot(player.x - exit.x, player.y - exit.y) < 11) player.escaped = true;
         }
         if (players.length && players.every((player) => player.escaped)) advanceLevel();
         const localPlayer = players.find((player) => player.id === localPlayerId);
@@ -940,6 +1202,7 @@
         if (level >= MAX_LEVEL) { finishGame("won"); return; }
         level += 1;
         makeMaze();
+        placeKey();
         players.forEach((player, index) => {
           const spawn = spawnCell(index, player.id);
           Object.assign(player, playerAt(spawn, player.id, player.name));
@@ -972,7 +1235,7 @@
           if (enemy.path.length) {
             const destination = cellCenter(enemy.path[0]);
             const distance = Math.hypot(destination.x - enemy.x, destination.y - enemy.y);
-            const step = (enemy.alerted > 0 ? 112 + level * 14 : 40 + level * 5) * delta;
+            const step = (enemy.alerted > 0 ? 112 + level * 14 : 40 + level * 5) * DIFFICULTIES[difficulty].speed * delta;
             if (distance <= step + 1) {
               enemy.x = destination.x; enemy.y = destination.y;
               enemy.cell = enemy.path.shift(); enemy.pathTimer = Math.min(enemy.pathTimer, .03);
@@ -1014,6 +1277,10 @@
       }
 
       function handleInput(key, down) {
+        if (key === "e") {
+          if (down) requestEcho();
+          return;
+        }
         if (!MOVE_KEYS.has(key) && !PANIC_KEYS.has(key)) return;
         if (key === "Shift" || key === " ") {
           if (isHost) {
@@ -1028,6 +1295,11 @@
           const player = players.find((item) => item.id === localPlayerId);
           if (player) player.keys[key] = down;
         } else postRoom({ type: "input", key, down });
+      }
+
+      function isTextEntryTarget(target) {
+        return target instanceof HTMLElement &&
+          (target.isContentEditable || target.matches("input, textarea, select"));
       }
 
       function resizeCanvas() {
@@ -1051,12 +1323,38 @@
         }
         const exit = cellCenter(EXIT);
         const glow = ctx.createRadialGradient(exit.x, exit.y, 2, exit.x, exit.y, 27);
-        glow.addColorStop(0, "#74f4b955"); glow.addColorStop(1, "#74f4b900");
+        glow.addColorStop(0, keyCollected ? "#74f4b955" : "#e6c27a44");
+        glow.addColorStop(1, keyCollected ? "#74f4b900" : "#e6c27a00");
         ctx.fillStyle = glow; ctx.fillRect(exit.x - 28, exit.y - 28, 56, 56);
-        ctx.strokeStyle = "#75efae"; ctx.lineWidth = 1.5;
+        ctx.strokeStyle = keyCollected ? "#75efae" : "#b99a60"; ctx.lineWidth = 1.5;
         ctx.strokeRect(EXIT.x * TILE + 5, EXIT.y * TILE + 5, TILE - 10, TILE - 10);
-        ctx.fillStyle = "#adffd0"; ctx.font = "10px Courier New"; ctx.textAlign = "center";
-        ctx.fillText("EXIT", exit.x, exit.y + 3);
+        ctx.fillStyle = keyCollected ? "#adffd0" : "#e6c27a"; ctx.font = "10px Courier New"; ctx.textAlign = "center";
+        ctx.fillText(keyCollected ? "EXIT" : "LOCK", exit.x, exit.y + 3);
+      }
+
+      function drawKey(time) {
+        if (!keyCell || keyCollected) return;
+        const key = cellCenter(keyCell);
+        const pulse = 1 + Math.sin(time * .006) * .12;
+        ctx.save();
+        ctx.translate(key.x, key.y);
+        ctx.scale(pulse, pulse);
+        ctx.shadowColor = "#ffd36a";
+        ctx.shadowBlur = 16;
+        ctx.strokeStyle = "#ffd36a";
+        ctx.fillStyle = "#ffd36a";
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.arc(-4, -3, 4, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(7, 7);
+        ctx.lineTo(12, 7);
+        ctx.moveTo(6, 6);
+        ctx.lineTo(6, 10);
+        ctx.stroke();
+        ctx.restore();
       }
 
       function drawRipples() {
@@ -1100,28 +1398,36 @@
 
       function drawDarkness() {
         if (!players.length) return;
-        ctx.save();
-        ctx.fillStyle = "rgba(2, 5, 9, .94)";
-        ctx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-        ctx.globalCompositeOperation = "destination-out";
-        const visionRadius = Math.max(82, 158 - level * 14);
+        darknessCtx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        const revealStrength = Math.max(0, echoRevealTimer / ECHO_DURATION);
+        const darkness = .94 - revealStrength * .62;
+        darknessCtx.fillStyle = `rgba(2, 5, 9, ${darkness})`;
+        darknessCtx.fillRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
+        darknessCtx.save();
+        darknessCtx.globalCompositeOperation = "destination-out";
+        const visionRadius = Math.max(82, 158 - level * 14 + DIFFICULTIES[difficulty].vision);
         for (const player of players) {
-          const glow = ctx.createRadialGradient(player.x, player.y, 18, player.x, player.y, visionRadius);
+          const glow = darknessCtx.createRadialGradient(player.x, player.y, 18, player.x, player.y, visionRadius);
           glow.addColorStop(0, "rgba(0, 0, 0, 1)");
           glow.addColorStop(.62, "rgba(0, 0, 0, .82)");
           glow.addColorStop(1, "rgba(0, 0, 0, 0)");
-          ctx.fillStyle = glow;
-          ctx.fillRect(player.x - visionRadius, player.y - visionRadius, visionRadius * 2, visionRadius * 2);
+          darknessCtx.fillStyle = glow;
+          darknessCtx.fillRect(player.x - visionRadius, player.y - visionRadius, visionRadius * 2, visionRadius * 2);
         }
-        ctx.restore();
+        darknessCtx.restore();
+        ctx.drawImage(darknessCanvas, 0, 0);
       }
 
       function render(time) {
         ctx.clearRect(0, 0, WORLD_WIDTH, WORLD_HEIGHT);
-        drawMaze(); drawRipples(); drawEnemies(time); drawPlayers(time);
+        drawMaze(); drawKey(time); drawRipples(); drawEnemies(time); drawPlayers(time);
         if (gameState === "playing") drawDarkness();
         ctx.fillStyle = "#71858e"; ctx.font = "10px Courier New"; ctx.textAlign = "left";
-        ctx.fillText(`LEVEL ${level}/${MAX_LEVEL}  ·  LIVES ${lives}  ·  PLAYERS ${players.length}`, 10, 16);
+        ctx.fillText(`${DIFFICULTIES[difficulty].label}  ·  LEVEL ${level}/${MAX_LEVEL}  ·  LIVES ${lives}`, 10, 16);
+        ctx.fillStyle = keyCollected ? "#9ff2d3" : "#e6c27a";
+        ctx.fillText(keyCollected ? "KEY FOUND · EXIT OPEN" : "FIND THE GOLD KEY · EXIT LOCKED", 10, 30);
+        echoButton.disabled = gameState !== "playing" || echoCooldownTimer > 0;
+        echoButton.textContent = echoCooldownTimer > 0 ? `ECHO ${Math.ceil(echoCooldownTimer)}` : "ECHO";
       }
 
       function frame(time) {
@@ -1129,6 +1435,8 @@
         lastFrame = time;
         if (gameState === "playing" && isHost) {
           rapidSoundTimer = Math.max(0, rapidSoundTimer - delta);
+          echoRevealTimer = Math.max(0, echoRevealTimer - delta);
+          echoCooldownTimer = Math.max(0, echoCooldownTimer - delta);
           updatePlayers(delta); updateRipples(delta); updateEnemies(delta);
           sendTimer += delta;
           if (sendTimer >= .12) { publishSnapshot(); sendTimer = 0; }
@@ -1141,7 +1449,11 @@
       }
 
       document.getElementById("continue-button").addEventListener("click", () => {
+        startAmbientSound();
         introPanel.hidden = true; lobbyPanel.hidden = false;
+      });
+      document.querySelectorAll("[data-difficulty]").forEach((button) => {
+        button.addEventListener("click", () => selectDifficulty(button.dataset.difficulty));
       });
       document.getElementById("create-room").addEventListener("click", createRoom);
       document.getElementById("join-room").addEventListener("click", joinRoom);
@@ -1158,18 +1470,41 @@
         startGame();
       });
       document.getElementById("leave-room").addEventListener("click", leaveRoom);
+      soundToggle.addEventListener("click", () => {
+        soundEnabled = !soundEnabled;
+        if (soundEnabled) startAmbientSound();
+        else updateSoundOutput();
+      });
+      testSoundButton.addEventListener("click", () => {
+        soundEnabled = true;
+        startAmbientSound();
+        playKeySound();
+      });
+      soundVolume.addEventListener("input", () => {
+        if (Number(soundVolume.value) > 0 && !ambientStarted) startAmbientSound();
+        else updateSoundOutput();
+      });
       actionButton.addEventListener("click", () => {
         overlay.hidden = true;
-        if (isHost) { level = 1; lives = STARTING_LIVES; startGame(); }
+        if (isHost) { level = 1; lives = DIFFICULTIES[difficulty].lives; startGame(); }
         else showRoomPanel(false);
       });
       joinCodeInput.addEventListener("input", () => { joinCodeInput.value = joinCodeInput.value.toUpperCase(); });
 
       window.addEventListener("keydown", (event) => {
-        if (MOVE_KEYS.has(event.key) || PANIC_KEYS.has(event.key)) event.preventDefault();
-        if (gameState === "playing" && !event.repeat) handleInput(event.key, true);
+        if (gameState !== "playing" || isTextEntryTarget(event.target)) return;
+        const key = event.key.toLowerCase() === "e" ? "e" : event.key;
+        if (MOVE_KEYS.has(key) || PANIC_KEYS.has(key) || key === "e") event.preventDefault();
+        if (!event.repeat) handleInput(key, true);
       });
-      window.addEventListener("keyup", (event) => handleInput(event.key, false));
+      window.addEventListener("keyup", (event) => {
+        if (isTextEntryTarget(event.target)) {
+          if (heldKeys.has(event.key)) handleInput(event.key, false);
+          if (event.key === "Shift") handleInput("Shift", false);
+          return;
+        }
+        handleInput(event.key, false);
+      });
       window.addEventListener("blur", () => {
         for (const key of [...heldKeys]) handleInput(key, false);
         handleInput("Shift", false);
@@ -1196,10 +1531,12 @@
       ["pointerup", "pointercancel", "lostpointercapture"].forEach((name) => runButton.addEventListener(name, (event) => {
         event.preventDefault(); runButton.classList.remove("pressed"); handleInput("Shift", false);
       }));
+      echoButton.addEventListener("click", requestEcho);
       window.addEventListener("resize", resizeCanvas);
 
       resizeCanvas();
       makeMaze();
+      placeKey();
       requestAnimationFrame(frame);
     })();
   </script>
