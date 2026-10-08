@@ -282,10 +282,39 @@
       user-select: none;
     }
 
-    .dpad {
+    .joystick {
+      position: relative;
       display: grid;
-      grid-template: repeat(2, 50px) / repeat(3, 50px);
-      gap: 4px;
+      width: 112px;
+      height: 112px;
+      flex: 0 0 112px;
+      place-items: center;
+      border: 1px solid #3b5a60;
+      border-radius: 50%;
+      background: #102027aa;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .joystick::before {
+      position: absolute;
+      inset: 23px;
+      border: 1px solid #3b5a6077;
+      border-radius: 50%;
+      content: "";
+    }
+
+    .joystick-knob {
+      position: relative;
+      z-index: 1;
+      width: 44px;
+      height: 44px;
+      border: 1px solid #74cbb0;
+      border-radius: 50%;
+      background: #225247;
+      box-shadow: 0 0 18px #55c5a655;
+      pointer-events: none;
+      transform: translate(0, 0);
     }
 
     .mobile-controls button {
@@ -304,10 +333,26 @@
       box-shadow: 0 0 18px #55c5a655;
     }
 
-    .mobile-controls .empty { visibility: hidden; }
     .mobile-controls .run-button { width: 94px; height: 60px; font-size: 11px; }
-    .mobile-controls .echo-button { width: 84px; height: 60px; font-size: 10px; }
     .mobile-controls button:disabled { border-color: #263c41; background: #0a1118; color: #71858e; box-shadow: none; }
+
+    .frame .echo-button {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1;
+      display: none;
+      width: auto;
+      min-width: 122px;
+      min-height: 42px;
+      padding: 8px 12px;
+      border-color: #3a8079;
+      background: #0b151be8;
+      color: #9ff2d3;
+      font-size: 10px;
+    }
+
+    body.is-playing .frame .echo-button { display: block; }
 
     .signal-mark {
       width: 68px;
@@ -399,9 +444,9 @@
 
     @media (max-width: 380px) {
       .mobile-controls { gap: 5px; padding: 7px; }
-      .dpad { grid-template: repeat(2, 42px) / repeat(3, 40px); gap: 3px; }
+      .joystick { width: 96px; height: 96px; flex-basis: 96px; }
+      .joystick-knob { width: 40px; height: 40px; }
       .mobile-controls .run-button { width: 66px; }
-      .mobile-controls .echo-button { width: 60px; }
     }
 
     @media (max-height: 560px) {
@@ -424,10 +469,8 @@
       .audio-controls { position: relative; z-index: 11; }
       body.is-playing .mobile-controls { display: flex; }
       .mobile-controls { width: 100%; min-width: 0; gap: clamp(6px, 2vw, 14px); padding: 8px; }
-      .dpad { grid-template: repeat(2, 42px) / repeat(3, 42px); gap: 3px; }
       .mobile-controls button { min-width: 0; min-height: 42px; }
       .mobile-controls .run-button { width: clamp(68px, 20vw, 94px); min-width: 0; min-height: 52px; }
-      .mobile-controls .echo-button { width: clamp(64px, 18vw, 82px); min-width: 0; height: 52px; }
       footer { display: none; }
     }
 
@@ -455,10 +498,10 @@
       .audio-controls { gap: 5px; }
       .audio-controls button { padding: 4px 6px; }
       .mobile-controls { justify-content: space-between; padding: 4px; }
-      .dpad { grid-template: repeat(2, 40px) / repeat(3, 42px); }
       .mobile-controls button { min-height: 40px; min-width: 42px; }
       .mobile-controls .run-button { min-width: 82px; min-height: 48px; }
-      .mobile-controls .echo-button { min-width: 66px; height: 48px; }
+      .joystick { width: 88px; height: 88px; flex-basis: 88px; }
+      .joystick-knob { width: 36px; height: 36px; }
     }
   </style>
 </head>
@@ -485,6 +528,7 @@
 
     <section class="frame" aria-label="Echoes of Silence game">
       <canvas id="game" aria-label="Top-down maze game. Find the golden key to unlock the exit. Use arrow keys or WASD."></canvas>
+      <button class="echo-button" id="echo-button" type="button" aria-label="Echo pulse. Reveal the maze and alert hunters. Press E or Space." disabled>ECHO · E / SPACE</button>
       <div class="overlay" id="overlay" hidden>
         <div class="card">
           <div class="signal-mark" aria-hidden="true">∿</div>
@@ -542,22 +586,16 @@
     </section>
 
     <div class="mobile-controls" id="mobile-controls" aria-label="Touch game controls">
-      <div class="dpad">
-        <button class="empty" tabindex="-1" aria-hidden="true"></button>
-        <button data-key="ArrowUp" aria-label="Move up">▲</button>
-        <button class="empty" tabindex="-1" aria-hidden="true"></button>
-        <button data-key="ArrowLeft" aria-label="Move left">◀</button>
-        <button data-key="ArrowDown" aria-label="Move down">▼</button>
-        <button data-key="ArrowRight" aria-label="Move right">▶</button>
+      <div class="joystick" id="joystick" role="group" aria-label="Drag to move in any direction">
+        <div class="joystick-knob" id="joystick-knob" aria-hidden="true"></div>
       </div>
-      <button class="echo-button" id="echo-button" type="button" aria-label="Echo pulse. Reveal the maze and alert hunters." disabled>ECHO</button>
       <button class="run-button" id="run-button" aria-label="Hold to run">HOLD<br>TO RUN</button>
     </div>
 
     <footer>
-      <span class="key">MOVE &nbsp; WASD / ARROWS / TOUCH</span>
-      <span class="key">RUN &nbsp; HOLD SHIFT / SPACE / RUN BUTTON</span>
-      <span>PRESS E TO ECHO · FIND THE KEY · SMALL SOUNDS FADE</span>
+      <span class="key">MOVE &nbsp; WASD / ARROWS / JOYSTICK</span>
+      <span class="key">RUN &nbsp; HOLD SHIFT / RUN BUTTON</span>
+      <span>PRESS E / SPACE TO ECHO · FIND THE KEY · SMALL SOUNDS FADE</span>
     </footer>
   </main>
 
@@ -603,7 +641,7 @@
       };
       const START = { x: 1, y: 1 }, EXIT = { x: COLS - 2, y: ROWS - 2 };
       const MOVE_KEYS = new Set(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "w", "a", "s", "d"]);
-      const PANIC_KEYS = new Set(["Shift", " "]);
+      const PANIC_KEYS = new Set(["Shift"]);
       const COLORS = ["#9effd2", "#8acbff", "#f2d47b", "#d59cff", "#ff9f83"];
       const SERVER_PROTOCOL = location.protocol === "https:" ? "wss:" : "ws:";
       const SERVER_URL = window.GAME_SERVER_URL || `${SERVER_PROTOCOL}//${location.host}/ws`;
@@ -1341,7 +1379,7 @@
           return;
         }
         if (!MOVE_KEYS.has(key) && !PANIC_KEYS.has(key)) return;
-        if (key === "Shift" || key === " ") {
+        if (key === "Shift") {
           if (isHost) {
             const player = players.find((item) => item.id === localPlayerId);
             if (player) player.panic = down;
@@ -1487,7 +1525,7 @@
         ctx.fillStyle = keyCollected ? "#9ff2d3" : "#e6c27a";
         ctx.fillText(keyCollected ? "KEY FOUND · EXIT OPEN" : "FIND THE GOLD KEY · EXIT LOCKED", 10, 30);
         echoButton.disabled = gameState !== "playing" || echoCooldownTimer > 0;
-        echoButton.textContent = echoCooldownTimer > 0 ? `ECHO ${Math.ceil(echoCooldownTimer)}` : "ECHO";
+        echoButton.textContent = echoCooldownTimer > 0 ? `ECHO ${Math.ceil(echoCooldownTimer)}` : "ECHO · E / SPACE";
       }
 
       function frame(time) {
@@ -1553,6 +1591,11 @@
 
       window.addEventListener("keydown", (event) => {
         if (gameState !== "playing" || isTextEntryTarget(event.target)) return;
+        if (event.code === "Space") {
+          event.preventDefault();
+          if (!event.repeat) requestEcho();
+          return;
+        }
         const key = event.key.toLowerCase() === "e" ? "e" : event.key;
         if (MOVE_KEYS.has(key) || PANIC_KEYS.has(key) || key === "e") event.preventDefault();
         if (!event.repeat) handleInput(key, true);
@@ -1568,21 +1611,58 @@
       window.addEventListener("blur", () => {
         for (const key of [...heldKeys]) handleInput(key, false);
         handleInput("Shift", false);
+        releaseJoystick();
       });
 
-      document.querySelectorAll(".dpad [data-key]").forEach((button) => {
-        const key = button.dataset.key;
-        button.addEventListener("pointerdown", (event) => {
-          event.preventDefault(); button.setPointerCapture(event.pointerId);
-          button.classList.add("pressed"); handleInput(key, true);
-        });
-        const release = (event) => {
-          event.preventDefault(); button.classList.remove("pressed"); handleInput(key, false);
-        };
-        button.addEventListener("pointerup", release);
-        button.addEventListener("pointercancel", release);
-        button.addEventListener("lostpointercapture", release);
+      const joystick = document.getElementById("joystick");
+      const joystickKnob = document.getElementById("joystick-knob");
+      const joystickDirections = new Set();
+      let joystickPointerId = null;
+      function moveJoystick(event) {
+        if (event.pointerId !== joystickPointerId) return;
+        event.preventDefault();
+        const bounds = joystick.getBoundingClientRect();
+        const centerX = bounds.left + bounds.width / 2;
+        const centerY = bounds.top + bounds.height / 2;
+        const maxOffset = bounds.width * .28;
+        const rawX = event.clientX - centerX;
+        const rawY = event.clientY - centerY;
+        const distance = Math.hypot(rawX, rawY);
+        const scale = distance > maxOffset ? maxOffset / distance : 1;
+        const offsetX = rawX * scale;
+        const offsetY = rawY * scale;
+        joystickKnob.style.transform = `translate(${offsetX}px, ${offsetY}px)`;
+        const nextDirections = new Set();
+        if (distance > maxOffset * .24) {
+          if (offsetX < -maxOffset * .24) nextDirections.add("ArrowLeft");
+          if (offsetX > maxOffset * .24) nextDirections.add("ArrowRight");
+          if (offsetY < -maxOffset * .24) nextDirections.add("ArrowUp");
+          if (offsetY > maxOffset * .24) nextDirections.add("ArrowDown");
+        }
+        for (const key of joystickDirections) if (!nextDirections.has(key)) handleInput(key, false);
+        for (const key of nextDirections) if (!joystickDirections.has(key)) handleInput(key, true);
+        joystickDirections.clear();
+        nextDirections.forEach((key) => joystickDirections.add(key));
+      }
+      function releaseJoystick(event) {
+        if (joystickPointerId === null || (event && event.pointerId !== joystickPointerId)) return;
+        if (event) event.preventDefault();
+        for (const key of joystickDirections) handleInput(key, false);
+        joystickDirections.clear();
+        joystickPointerId = null;
+        joystickKnob.style.transform = "translate(0, 0)";
+      }
+      joystick.addEventListener("pointerdown", (event) => {
+        if (gameState !== "playing" || joystickPointerId !== null) return;
+        event.preventDefault();
+        joystickPointerId = event.pointerId;
+        joystick.setPointerCapture(event.pointerId);
+        moveJoystick(event);
       });
+      joystick.addEventListener("pointermove", moveJoystick);
+      joystick.addEventListener("pointerup", releaseJoystick);
+      joystick.addEventListener("pointercancel", releaseJoystick);
+      joystick.addEventListener("lostpointercapture", releaseJoystick);
       const runButton = document.getElementById("run-button");
       runButton.addEventListener("pointerdown", (event) => {
         event.preventDefault(); runButton.setPointerCapture(event.pointerId);
